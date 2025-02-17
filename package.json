@@ -1,23 +1,52 @@
 {
-  "name": "chrome-tools-mcp",
+  "name": "@modelcontextprotocol/chrome-tools",
   "version": "1.0.0",
-  "description": "MCP server for Chrome DevTools Protocol integration",
+  "description": "MCP server for Chrome DevTools Protocol integration - control Chrome tabs, execute JavaScript, capture screenshots, and monitor network traffic",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node --esm src/index.ts",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "prepare": "npm run build",
+    "test": "echo \"No tests specified\" && exit 0",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\""
   },
+  "bin": {
+    "mcp-chrome-tools": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "keywords": [
     "mcp",
     "chrome",
     "devtools",
-    "debugging"
+    "debugging",
+    "automation",
+    "testing",
+    "screenshots",
+    "network-monitoring",
+    "browser-automation",
+    "chrome-devtools-protocol"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": {
+    "name": "nicholmikey",
+    "url": "https://github.com/nicholmikey"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nicholmikey/chrome-tools-MCP.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nicholmikey/chrome-tools-MCP/issues"
+  },
+  "homepage": "https://github.com/nicholmikey/chrome-tools-MCP#readme",
+  "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.5.0",
     "@types/ws": "^8.5.14",
