@@ -1,5 +1,9 @@
 import CDP from 'chrome-remote-interface';
-import { ChromeTab } from './types.js';
+import type { Client } from 'chrome-remote-interface';
+import { ChromeTab, DOMElement } from './types.js';
+
+type MouseButton = 'none' | 'left' | 'middle' | 'right' | 'back' | 'forward';
+type MouseEventType = 'mousePressed' | 'mouseReleased';
 
 export class ChromeAPI {
     private baseUrl: string;
@@ -38,11 +42,15 @@ export class ChromeAPI {
      */
     async executeScript(tabId: string, script: string): Promise<string> {
         console.error(`ChromeAPI: Attempting to execute script in tab ${tabId}`);
-        let client;
+        let client: Client | undefined;
         try {
             // Connect to the specific tab
             client = await CDP({ target: tabId, port: this.port });
             
+            if (!client) {
+                throw new Error('Failed to connect to Chrome DevTools');
+            }
+
             // Enable Runtime and set up console listener
             await client.Runtime.enable();
             
@@ -104,11 +112,15 @@ export class ChromeAPI {
         } = {}
     ): Promise<string> {
         console.error(`ChromeAPI: Attempting to capture screenshot of tab ${tabId}`);
-        let client;
+        let client: Client | undefined;
         try {
             // Connect to the specific tab
             client = await CDP({ target: tabId, port: this.port });
             
+            if (!client) {
+                throw new Error('Failed to connect to Chrome DevTools');
+            }
+
             // Enable Page domain for screenshot capabilities
             await client.Page.enable();
             
@@ -182,52 +194,60 @@ export class ChromeAPI {
         };
     }>> {
         console.error(`ChromeAPI: Attempting to capture network events from tab ${tabId}`);
-        let client;
+        let client: Client | undefined;
         try {
             // Connect to the specific tab
             client = await CDP({ target: tabId, port: this.port });
             
+            if (!client) {
+                throw new Error('Failed to connect to Chrome DevTools');
+            }
+
             // Enable Network domain
             await client.Network.enable();
 
             const events: Array<any> = [];
             const requests = new Map();
 
-            // Set up event listeners
-            client.Network.requestWillBeSent((params) => {
-                const request = {
-                    type: (params.type?.toLowerCase() === 'xhr' ? 'xhr' : 'fetch') as 'xhr' | 'fetch',
-                    method: params.request.method,
-                    url: params.request.url,
-                    requestHeaders: params.request.headers,
-                    timing: {
-                        requestTime: params.timestamp
+            // Set up event handlers
+            const requestHandler = (params: any) => {
+                    const request = {
+                        type: (params.type?.toLowerCase() === 'xhr' ? 'xhr' : 'fetch') as 'xhr' | 'fetch',
+                        method: params.request.method,
+                        url: params.request.url,
+                        requestHeaders: params.request.headers,
+                        timing: {
+                            requestTime: params.timestamp
+                        }
+                    };
+                    
+                    // Apply filters if specified
+                    if (options.filters) {
+                        if (options.filters.types && !options.filters.types.includes(request.type)) {
+                            return;
+                        }
+                        if (options.filters.urlPattern && !request.url.match(options.filters.urlPattern)) {
+                            return;
+                        }
+                    }
+                    
+                    requests.set(params.requestId, request);
+                };
+
+                const responseHandler = (params: any) => {
+                    const request = requests.get(params.requestId);
+                    if (request) {
+                        request.status = params.response.status;
+                        request.statusText = params.response.statusText;
+                        request.responseHeaders = params.response.headers;
+                        request.timing.responseTime = params.timestamp;
+                        events.push(request);
                     }
                 };
-                
-                // Apply filters if specified
-                if (options.filters) {
-                    if (options.filters.types && !options.filters.types.includes(request.type)) {
-                        return;
-                    }
-                    if (options.filters.urlPattern && !request.url.match(options.filters.urlPattern)) {
-                        return;
-                    }
-                }
-                
-                requests.set(params.requestId, request);
-            });
 
-            client.Network.responseReceived((params) => {
-                const request = requests.get(params.requestId);
-                if (request) {
-                    request.status = params.response.status;
-                    request.statusText = params.response.statusText;
-                    request.responseHeaders = params.response.headers;
-                    request.timing.responseTime = params.timestamp;
-                    events.push(request);
-                }
-            });
+            // Register event handlers
+            client.Network.requestWillBeSent(requestHandler);
+            client.Network.responseReceived(responseHandler);
 
             // Wait for specified duration
             const duration = options.duration || 10;
@@ -254,11 +274,15 @@ export class ChromeAPI {
      */
     async loadUrl(tabId: string, url: string): Promise<void> {
         console.error(`ChromeAPI: Attempting to load URL ${url} in tab ${tabId}`);
-        let client;
+        let client: Client | undefined;
         try {
             // Connect to the specific tab
             client = await CDP({ target: tabId, port: this.port });
             
+            if (!client) {
+                throw new Error('Failed to connect to Chrome DevTools');
+            }
+
             // Enable Page domain for navigation
             await client.Page.enable();
             
@@ -269,6 +293,230 @@ export class ChromeAPI {
             console.error('ChromeAPI: URL loading successful');
         } catch (error) {
             console.error('ChromeAPI: URL loading failed:', error instanceof Error ? error.message : error);
+            throw error;
+        } finally {
+            if (client) {
+                await client.close();
+            }
+        }
+    }
+
+    /**
+     * Query DOM elements using a CSS selector
+     * @param tabId The ID of the tab to query
+     * @param selector CSS selector to find elements
+     * @returns Promise<DOMElement[]> Array of matching DOM elements with their properties
+     * @throws Error if the tab is not found or query fails
+     */
+    async queryDOMElements(tabId: string, selector: string): Promise<DOMElement[]> {
+        console.error(`ChromeAPI: Attempting to query DOM elements in tab ${tabId} with selector "${selector}"`);
+        let client: Client | undefined;
+        try {
+            // Connect to the specific tab
+            client = await CDP({ target: tabId, port: this.port });
+            
+            if (!client) {
+                throw new Error('Failed to connect to Chrome DevTools');
+            }
+
+            // Enable necessary domains
+            await client.DOM.enable();
+            await client.Runtime.enable();
+            
+            // Get the document root
+            const { root } = await client.DOM.getDocument();
+            
+            // Find elements matching the selector
+            const { nodeIds } = await client.DOM.querySelectorAll({
+                nodeId: root.nodeId,
+                selector: selector
+            });
+
+            // Get detailed information for each element
+            const elements: DOMElement[] = await Promise.all(
+                nodeIds.map(async (nodeId) => {
+                    if (!client) {
+                        throw new Error('Client disconnected');
+                    }
+
+                    // Get node details
+                    const { node } = await client.DOM.describeNode({ nodeId });
+                    
+                    // Get node box model for position and dimensions
+                    const boxModel = await client.DOM.getBoxModel({ nodeId })
+                        .catch(() => null); // Some elements might not have a box model
+                    
+                    // Check visibility using Runtime.evaluate
+                    const result = await client.Runtime.evaluate({
+                        expression: `
+                            (function(selector) {
+                                const element = document.querySelector(selector);
+                                if (!element) return false;
+                                const style = window.getComputedStyle(element);
+                                return style.display !== 'none' && 
+                                       style.visibility !== 'hidden' && 
+                                       style.opacity !== '0';
+                            })('${selector}')
+                        `,
+                        returnByValue: true
+                    });
+
+                    // Extract ARIA attributes
+                    const ariaAttributes: Record<string, string> = {};
+                    if (node.attributes) {
+                        for (let i = 0; i < node.attributes.length; i += 2) {
+                            const name = node.attributes[i];
+                            if (name.startsWith('aria-')) {
+                                ariaAttributes[name] = node.attributes[i + 1];
+                            }
+                        }
+                    }
+
+                    // Convert attributes array to object
+                    const attributes: Record<string, string> = {};
+                    if (node.attributes) {
+                        for (let i = 0; i < node.attributes.length; i += 2) {
+                            attributes[node.attributes[i]] = node.attributes[i + 1];
+                        }
+                    }
+
+                    return {
+                        nodeId,
+                        tagName: node.nodeName.toLowerCase(),
+                        textContent: node.nodeValue || null,
+                        attributes,
+                        boundingBox: boxModel ? {
+                            x: boxModel.model.content[0],
+                            y: boxModel.model.content[1],
+                            width: boxModel.model.width,
+                            height: boxModel.model.height
+                        } : null,
+                        isVisible: result.result.value as boolean,
+                        ariaAttributes
+                    };
+                })
+            );
+
+            console.error(`ChromeAPI: Successfully found ${elements.length} elements matching selector`);
+            return elements;
+        } catch (error) {
+            console.error('ChromeAPI: DOM query failed:', error instanceof Error ? error.message : error);
+            throw error;
+        } finally {
+            if (client) {
+                await client.close();
+            }
+        }
+    }
+
+    /**
+     * Click on a DOM element matching a CSS selector
+     * @param tabId The ID of the tab containing the element
+     * @param selector CSS selector to find the element to click
+     * @returns Promise<void>
+     * @throws Error if the tab is not found, element is not found, or click fails
+     */
+    async clickElement(tabId: string, selector: string): Promise<{consoleOutput: string[]}> {
+        console.error(`ChromeAPI: Attempting to click element in tab ${tabId} with selector "${selector}"`);
+        let client: Client | undefined;
+        try {
+            // Connect to the specific tab
+            client = await CDP({ target: tabId, port: this.port });
+            
+            if (!client) {
+                throw new Error('Failed to connect to Chrome DevTools');
+            }
+
+            // Enable necessary domains
+            await client.DOM.enable();
+            await client.Runtime.enable();
+            
+            // Get the document root
+            const { root } = await client.DOM.getDocument();
+            
+            // Find the element
+            const { nodeIds } = await client.DOM.querySelectorAll({
+                nodeId: root.nodeId,
+                selector: selector
+            });
+
+            if (nodeIds.length === 0) {
+                throw new Error(`No element found matching selector: ${selector}`);
+            }
+
+            // Get element's box model for coordinates
+            const { model } = await client.DOM.getBoxModel({ nodeId: nodeIds[0] });
+            
+            // Calculate center point
+            const centerX = model.content[0] + (model.width / 2);
+            const centerY = model.content[1] + (model.height / 2);
+
+            // Dispatch click event using Runtime.evaluate
+            await client.Runtime.evaluate({
+                expression: `
+                    (() => {
+                        const element = document.querySelector('${selector}');
+                        if (!element) throw new Error('Element not found');
+                        
+                        const clickEvent = new MouseEvent('click', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window,
+                            clientX: ${Math.round(centerX)},
+                            clientY: ${Math.round(centerY)}
+                        });
+                        
+                        element.dispatchEvent(clickEvent);
+                    })()
+                `,
+                awaitPromise: true
+            });
+
+            // Set up console listener before the click
+            let consoleMessages: string[] = [];
+            const consolePromise = new Promise<void>((resolve) => {
+                if (!client) return;
+                client.Runtime.consoleAPICalled(({ type, args }) => {
+                    const message = args.map(arg => arg.value || arg.description).join(' ');
+                    consoleMessages.push(`[${type}] ${message}`);
+                    console.error(`Chrome Console: ${type}:`, message);
+                    resolve(); // Resolve when we get a console message
+                });
+            });
+
+            // Set up a timeout promise
+            const timeoutPromise = new Promise<void>((resolve) => {
+                setTimeout(resolve, 1000);
+            });
+
+            // Click the element
+            await client.Runtime.evaluate({
+                expression: `
+                    (() => {
+                        const element = document.querySelector('${selector}');
+                        if (!element) throw new Error('Element not found');
+                        
+                        const clickEvent = new MouseEvent('click', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window,
+                            clientX: ${Math.round(centerX)},
+                            clientY: ${Math.round(centerY)}
+                        });
+                        
+                        element.dispatchEvent(clickEvent);
+                    })()
+                `,
+                awaitPromise: true
+            });
+
+            // Wait for either a console message or timeout
+            await Promise.race([consolePromise, timeoutPromise]);
+
+            console.error('ChromeAPI: Successfully clicked element');
+            return { consoleOutput: consoleMessages };
+        } catch (error) {
+            console.error('ChromeAPI: Element click failed:', error instanceof Error ? error.message : error);
             throw error;
         } finally {
             if (client) {

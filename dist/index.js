@@ -171,6 +171,65 @@ server.tool('capture_network_events', {
         };
     }
 });
+// Add the query_dom_elements tool
+server.tool('query_dom_elements', {
+    tabId: z.string().describe('ID of the Chrome tab to query'),
+    selector: z.string().describe('CSS selector to find elements')
+}, async (params) => {
+    try {
+        console.error(`Attempting to query DOM elements in tab ${params.tabId}...`);
+        const elements = await chromeApi.queryDOMElements(params.tabId, params.selector);
+        console.error(`Successfully found ${elements.length} elements matching selector`);
+        return {
+            content: [{
+                    type: 'text',
+                    text: JSON.stringify(elements, null, 2)
+                }]
+        };
+    }
+    catch (error) {
+        console.error('Error in query_dom_elements tool:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        return {
+            content: [{
+                    type: 'text',
+                    text: `Error: ${errorMessage}`
+                }],
+            isError: true
+        };
+    }
+});
+// Add the click_element tool
+server.tool('click_element', {
+    tabId: z.string().describe('ID of the Chrome tab containing the element'),
+    selector: z.string().describe('CSS selector to find the element to click')
+}, async (params) => {
+    try {
+        console.error(`Attempting to click element in tab ${params.tabId}...`);
+        const result = await chromeApi.clickElement(params.tabId, params.selector);
+        console.error('Successfully clicked element');
+        return {
+            content: [{
+                    type: 'text',
+                    text: JSON.stringify({
+                        message: 'Successfully clicked element',
+                        consoleOutput: result.consoleOutput
+                    }, null, 2)
+                }]
+        };
+    }
+    catch (error) {
+        console.error('Error in click_element tool:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        return {
+            content: [{
+                    type: 'text',
+                    text: `Error: ${errorMessage}`
+                }],
+            isError: true
+        };
+    }
+});
 // Handle process termination
 process.on('SIGINT', () => {
     server.close().catch(console.error);

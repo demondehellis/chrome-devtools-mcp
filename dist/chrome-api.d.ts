@@ -1,4 +1,4 @@
-import { ChromeTab } from './types.js';
+import { ChromeTab, DOMElement } from './types.js';
 export declare class ChromeAPI {
     private baseUrl;
     constructor(options?: {
@@ -70,5 +70,23 @@ export declare class ChromeAPI {
      * @throws Error if the tab is not found or navigation fails
      */
     loadUrl(tabId: string, url: string): Promise<void>;
+    /**
+     * Query DOM elements using a CSS selector
+     * @param tabId The ID of the tab to query
+     * @param selector CSS selector to find elements
+     * @returns Promise<DOMElement[]> Array of matching DOM elements with their properties
+     * @throws Error if the tab is not found or query fails
+     */
+    queryDOMElements(tabId: string, selector: string): Promise<DOMElement[]>;
+    /**
+     * Click on a DOM element matching a CSS selector
+     * @param tabId The ID of the tab containing the element
+     * @param selector CSS selector to find the element to click
+     * @returns Promise<void>
+     * @throws Error if the tab is not found, element is not found, or click fails
+     */
+    clickElement(tabId: string, selector: string): Promise<{
+        consoleOutput: string[];
+    }>;
     private get port();
 }
