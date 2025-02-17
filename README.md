@@ -122,12 +122,24 @@ Parameters:
 - `script`: JavaScript code to execute
 
 ### capture_screenshot
-Captures a screenshot of a specified tab.
+Captures a screenshot of a specified tab, automatically optimizing it for AI model consumption.
 Parameters:
 - `tabId`: ID of the Chrome tab
-- `format`: Image format (jpeg/png)
-- `quality`: JPEG quality (1-100)
+- `format`: Image format (jpeg/png) - Note: This is only for initial capture. Final output uses WebP with PNG fallback
+- `quality`: JPEG quality (1-100) - Note: For initial capture only
 - `fullPage`: Capture full scrollable page
+
+Image Processing:
+1. WebP Optimization (Primary Format):
+   - First attempt: WebP with quality 80 and high compression effort
+   - Second attempt: WebP with quality 60 and near-lossless compression if first attempt exceeds 1MB
+2. PNG Fallback:
+   - Only used if WebP processing fails
+   - Includes maximum compression and color palette optimization
+3. Size Constraints:
+   - Maximum dimensions: 900x600 (maintains aspect ratio)
+   - Maximum file size: 1MB
+   - Progressive size reduction if needed
 
 ### capture_network_events
 Monitors and captures network events from a specified tab.

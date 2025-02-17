@@ -2,6 +2,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ChromeAPI } from './chrome-api.js';
+import { processImage } from './image-utils.js';
 import { z } from 'zod';
 // Get Chrome debug URL from environment variable or use default
 const chromeDebugUrl = process.env.CHROME_DEBUG_URL || 'http://localhost:9222';
@@ -10,7 +11,7 @@ const chromeApi = new ChromeAPI({ baseUrl: chromeDebugUrl });
 // Create the MCP server
 const server = new McpServer({
     name: 'chrome-tools',
-    version: '1.2.0'
+    version: '1.3.0'
 });
 // Add the list_tabs tool
 server.tool('list_tabs', {}, // No input parameters needed
@@ -41,24 +42,45 @@ async () => {
 // Add the capture_screenshot tool
 server.tool('capture_screenshot', {
     tabId: z.string().describe('ID of the Chrome tab to capture'),
-    format: z.enum(['jpeg', 'png']).optional().describe('Image format (jpeg or png)'),
-    quality: z.number().min(1).max(100).optional().describe('JPEG quality (1-100)'),
-    fullPage: z.boolean().optional().describe('Capture full scrollable page')
+    format: z.enum(['jpeg', 'png']).optional()
+        .describe('Initial capture format (jpeg/png). Note: Final output will be WebP with PNG fallback'),
+    quality: z.number().min(1).max(100).optional()
+        .describe('Initial capture quality (1-100). Note: Final output uses WebP quality settings'),
+    fullPage: z.boolean().optional()
+        .describe('Capture full scrollable page')
 }, async (params) => {
     try {
         console.error(`Attempting to capture screenshot of tab ${params.tabId}...`);
-        const base64Data = await chromeApi.captureScreenshot(params.tabId, {
+        const rawBase64Data = await chromeApi.captureScreenshot(params.tabId, {
             format: params.format,
             quality: params.quality,
             fullPage: params.fullPage
         });
-        console.error('Screenshot capture successful');
-        return {
-            content: [{
-                    type: 'text',
-                    text: base64Data
-                }]
-        };
+        console.error('Screenshot captured, optimizing with WebP...');
+        try {
+            // Process image with the following strategy:
+            // 1. Try WebP with quality 80 (best balance of quality/size)
+            // 2. If >1MB, try WebP with quality 60 and near-lossless
+            // 3. If WebP fails, fall back to PNG with maximum compression
+            const processedImage = await processImage(rawBase64Data);
+            console.error(`Image optimized successfully (${processedImage.data.startsWith('data:image/webp') ? 'WebP' : 'PNG'}, ${Math.round(processedImage.size / 1024)}KB)`);
+            return {
+                content: [{
+                        type: 'text',
+                        text: processedImage.data
+                    }]
+            };
+        }
+        catch (error) {
+            console.error('Image processing failed:', error);
+            return {
+                content: [{
+                        type: 'text',
+                        text: `Error processing screenshot: ${error instanceof Error ? error.message : 'Unknown error'}`
+                    }],
+                isError: true
+            };
+        }
     }
     catch (error) {
         console.error('Error in capture_screenshot tool:', error);
