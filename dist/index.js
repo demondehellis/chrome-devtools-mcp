@@ -10,7 +10,7 @@ const chromeApi = new ChromeAPI({ baseUrl: chromeDebugUrl });
 // Create the MCP server
 const server = new McpServer({
     name: 'chrome-tools',
-    version: '1.0.0'
+    version: '1.2.0'
 });
 // Add the list_tabs tool
 server.tool('list_tabs', {}, // No input parameters needed

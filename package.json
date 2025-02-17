@@ -1,6 +1,6 @@
 {
   "name": "@nicholmikey/chrome-tools",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "description": "MCP server for Chrome DevTools Protocol integration - control Chrome tabs, execute JavaScript, capture screenshots, and monitor network traffic",
   "main": "dist/index.js",
   "type": "module",

@@ -12,6 +12,8 @@ This type of MCP Server is useful When you need to manually configure your brows
 - Capture screenshots
 - Monitor network traffic
 - Navigate tabs to URLs
+- Query DOM elements
+- Click elements with console output capture
 
 ## Installation
 
@@ -139,6 +141,31 @@ Navigates a tab to a specified URL.
 Parameters:
 - `tabId`: ID of the Chrome tab
 - `url`: URL to load
+
+### query_dom_elements
+Queries and retrieves detailed information about DOM elements matching a CSS selector.
+Parameters:
+- `tabId`: ID of the Chrome tab
+- `selector`: CSS selector to find elements
+Returns:
+- Array of DOM elements with properties including:
+  - `nodeId`: Unique identifier for the node
+  - `tagName`: HTML tag name
+  - `textContent`: Text content of the element
+  - `attributes`: Object containing all element attributes
+  - `boundingBox`: Position and dimensions of the element
+  - `isVisible`: Whether the element is visible
+  - `ariaAttributes`: ARIA attributes for accessibility
+
+### click_element
+Clicks on a DOM element and captures any console output triggered by the click.
+Parameters:
+- `tabId`: ID of the Chrome tab
+- `selector`: CSS selector to find the element to click
+Returns:
+- Object containing:
+  - `message`: Success/failure message
+  - `consoleOutput`: Array of console messages triggered by the click
 
 ## License
 
