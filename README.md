@@ -2,6 +2,9 @@
 
 A Model Context Protocol (MCP) server that provides tools for interacting with Chrome through the Chrome DevTools Protocol. This server is particularly useful for testing web applications in a browser with specific conditions or configurations.
 
+## Why use an MCP server like this?
+This type of MCP Server is usful When you need to manually configure your browser to be a certain state before you let an AI tool like Cline poke at it. In my workflows I use it for testing sites that have chrome extensions enabled. 
+
 ## Features
 
 The server provides the following tools:
