@@ -10,14 +10,25 @@
     "dev": "ts-node --esm src/index.ts",
     "watch": "tsc --watch"
   },
-  "keywords": ["mcp", "chrome", "devtools", "debugging"],
+  "keywords": [
+    "mcp",
+    "chrome",
+    "devtools",
+    "debugging"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.5.0",
+    "@types/ws": "^8.5.14",
     "axios": "^1.7.9",
+    "chrome-remote-interface": "^0.33.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3",
+    "ws": "^8.18.0",
     "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/chrome-remote-interface": "^0.31.14"
   }
 }
