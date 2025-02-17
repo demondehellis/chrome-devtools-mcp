@@ -41,6 +41,44 @@ server.tool(
     }
 );
 
+// Add the capture_screenshot tool
+server.tool(
+    'capture_screenshot',
+    {
+        tabId: z.string().describe('ID of the Chrome tab to capture'),
+        format: z.enum(['jpeg', 'png']).optional().describe('Image format (jpeg or png)'),
+        quality: z.number().min(1).max(100).optional().describe('JPEG quality (1-100)'),
+        fullPage: z.boolean().optional().describe('Capture full scrollable page')
+    },
+    async (params) => {
+        try {
+            console.error(`Attempting to capture screenshot of tab ${params.tabId}...`);
+            const base64Data = await chromeApi.captureScreenshot(params.tabId, {
+                format: params.format,
+                quality: params.quality,
+                fullPage: params.fullPage
+            });
+            console.error('Screenshot capture successful');
+            return {
+                content: [{
+                    type: 'text',
+                    text: base64Data
+                }]
+            };
+        } catch (error) {
+            console.error('Error in capture_screenshot tool:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            return {
+                content: [{
+                    type: 'text',
+                    text: `Error: ${errorMessage}`
+                }],
+                isError: true
+            };
+        }
+    }
+);
+
 // Add the execute_script tool
 server.tool(
     'execute_script',

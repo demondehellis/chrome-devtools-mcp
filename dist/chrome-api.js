@@ -78,6 +78,59 @@ export class ChromeAPI {
             return false;
         }
     }
+    /**
+     * Capture a screenshot of a specific Chrome tab
+     * @param tabId The ID of the tab to capture
+     * @param options Screenshot options (format, quality, fullPage)
+     * @returns Promise with the base64-encoded screenshot data
+     * @throws Error if the tab is not found or screenshot capture fails
+     */
+    async captureScreenshot(tabId, options = {}) {
+        console.error(`ChromeAPI: Attempting to capture screenshot of tab ${tabId}`);
+        let client;
+        try {
+            // Connect to the specific tab
+            client = await CDP({ target: tabId, port: this.port });
+            // Enable Page domain for screenshot capabilities
+            await client.Page.enable();
+            // If fullPage is requested, we need to get the full page dimensions
+            if (options.fullPage) {
+                // Get the full page dimensions
+                const { root } = await client.DOM.getDocument();
+                const { model } = await client.DOM.getBoxModel({ nodeId: root.nodeId });
+                const height = model.height;
+                // Set viewport to full page height
+                await client.Emulation.setDeviceMetricsOverride({
+                    width: 1920, // Standard width
+                    height: Math.ceil(height),
+                    deviceScaleFactor: 1,
+                    mobile: false
+                });
+            }
+            // Capture the screenshot
+            const result = await client.Page.captureScreenshot({
+                format: options.format || 'png',
+                quality: options.format === 'jpeg' ? options.quality || 80 : undefined,
+                fromSurface: true,
+                captureBeyondViewport: options.fullPage || false
+            });
+            console.error('ChromeAPI: Screenshot capture successful');
+            return result.data;
+        }
+        catch (error) {
+            console.error('ChromeAPI: Screenshot capture failed:', error instanceof Error ? error.message : error);
+            throw error;
+        }
+        finally {
+            if (client) {
+                // Reset device metrics if we modified them
+                if (options.fullPage) {
+                    await client.Emulation.clearDeviceMetricsOverride();
+                }
+                await client.close();
+            }
+        }
+    }
     get port() {
         const portMatch = this.baseUrl.match(/:(\d+)$/);
         return portMatch ? parseInt(portMatch[1]) : 9222;

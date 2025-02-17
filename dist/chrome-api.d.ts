@@ -23,5 +23,17 @@ export declare class ChromeAPI {
      * @returns Promise<boolean>
      */
     isAvailable(): Promise<boolean>;
+    /**
+     * Capture a screenshot of a specific Chrome tab
+     * @param tabId The ID of the tab to capture
+     * @param options Screenshot options (format, quality, fullPage)
+     * @returns Promise with the base64-encoded screenshot data
+     * @throws Error if the tab is not found or screenshot capture fails
+     */
+    captureScreenshot(tabId: string, options?: {
+        format?: 'jpeg' | 'png';
+        quality?: number;
+        fullPage?: boolean;
+    }): Promise<string>;
     private get port();
 }
