@@ -16,7 +16,7 @@ This type of MCP Server is usful When you need to manually configure your browse
 ## Installation
 
 ```bash
-npm install @modelcontextprotocol/chrome-tools
+npm install @nicholmikey/chrome-tools
 ```
 
 ## Configuration

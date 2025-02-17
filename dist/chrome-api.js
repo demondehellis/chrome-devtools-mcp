@@ -3,7 +3,8 @@ export class ChromeAPI {
     constructor(options = {}) {
         const { port = 9222, baseUrl } = options;
         this.baseUrl = baseUrl || `http://localhost:${port}`;
-        console.error(`ChromeAPI: Connecting to ${this.baseUrl} through SSH tunnel`);
+        const connectionType = process.env.CHROME_CONNECTION_TYPE || 'direct';
+        console.error(`ChromeAPI: Connecting to ${this.baseUrl} (${connectionType} connection)`);
     }
     /**
      * List all available Chrome tabs
@@ -19,7 +20,8 @@ export class ChromeAPI {
         }
         catch (error) {
             console.error(`ChromeAPI: Failed to list tabs:`, error instanceof Error ? error.message : error);
-            throw new Error(`Failed to connect to Chrome DevTools. Make sure the SSH tunnel is running: ssh -N -L 9222:localhost:9222 sshuser@192.168.224.1`);
+            const errorHelp = process.env.CHROME_ERROR_HELP || 'Make sure Chrome is running with remote debugging enabled (--remote-debugging-port=9222)';
+            throw new Error(`Failed to connect to Chrome DevTools. ${errorHelp}`);
         }
     }
     /**
