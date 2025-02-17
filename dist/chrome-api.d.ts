@@ -35,5 +35,31 @@ export declare class ChromeAPI {
         quality?: number;
         fullPage?: boolean;
     }): Promise<string>;
+    /**
+     * Capture network events (XHR/Fetch) from a specific Chrome tab
+     * @param tabId The ID of the tab to capture events from
+     * @param options Capture options (duration, filters)
+     * @returns Promise with the captured network events
+     * @throws Error if the tab is not found or capture fails
+     */
+    captureNetworkEvents(tabId: string, options?: {
+        duration?: number;
+        filters?: {
+            types?: Array<'fetch' | 'xhr'>;
+            urlPattern?: string;
+        };
+    }): Promise<Array<{
+        type: 'fetch' | 'xhr';
+        method: string;
+        url: string;
+        status: number;
+        statusText: string;
+        requestHeaders: Record<string, string>;
+        responseHeaders: Record<string, string>;
+        timing: {
+            requestTime: number;
+            responseTime: number;
+        };
+    }>>;
     private get port();
 }

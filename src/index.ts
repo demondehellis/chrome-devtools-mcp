@@ -118,6 +118,48 @@ console.error('Chrome Tools MCP Server starting...');
 const transport = new StdioServerTransport();
 server.connect(transport).catch(console.error);
 
+// Add the capture_network_events tool
+server.tool(
+    'capture_network_events',
+    {
+        tabId: z.string().describe('ID of the Chrome tab to monitor'),
+        duration: z.number().min(1).max(60).optional()
+            .describe('Duration in seconds to capture events (default: 10)'),
+        filters: z.object({
+            types: z.array(z.enum(['fetch', 'xhr'])).optional()
+                .describe('Types of requests to capture'),
+            urlPattern: z.string().optional()
+                .describe('Only capture URLs matching this pattern')
+        }).optional()
+    },
+    async (params) => {
+        try {
+            console.error(`Attempting to capture network events from tab ${params.tabId}...`);
+            const events = await chromeApi.captureNetworkEvents(params.tabId, {
+                duration: params.duration,
+                filters: params.filters
+            });
+            console.error(`Network event capture successful, captured ${events.length} events`);
+            return {
+                content: [{
+                    type: 'text',
+                    text: JSON.stringify(events, null, 2)
+                }]
+            };
+        } catch (error) {
+            console.error('Error in capture_network_events tool:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            return {
+                content: [{
+                    type: 'text',
+                    text: `Error: ${errorMessage}`
+                }],
+                isError: true
+            };
+        }
+    }
+);
+
 // Handle process termination
 process.on('SIGINT', () => {
     server.close().catch(console.error);

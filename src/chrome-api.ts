@@ -150,6 +150,99 @@ export class ChromeAPI {
         }
     }
 
+    /**
+     * Capture network events (XHR/Fetch) from a specific Chrome tab
+     * @param tabId The ID of the tab to capture events from
+     * @param options Capture options (duration, filters)
+     * @returns Promise with the captured network events
+     * @throws Error if the tab is not found or capture fails
+     */
+    async captureNetworkEvents(
+        tabId: string,
+        options: {
+            duration?: number;
+            filters?: {
+                types?: Array<'fetch' | 'xhr'>;
+                urlPattern?: string;
+            };
+        } = {}
+    ): Promise<Array<{
+        type: 'fetch' | 'xhr';
+        method: string;
+        url: string;
+        status: number;
+        statusText: string;
+        requestHeaders: Record<string, string>;
+        responseHeaders: Record<string, string>;
+        timing: {
+            requestTime: number;
+            responseTime: number;
+        };
+    }>> {
+        console.error(`ChromeAPI: Attempting to capture network events from tab ${tabId}`);
+        let client;
+        try {
+            // Connect to the specific tab
+            client = await CDP({ target: tabId, port: this.port });
+            
+            // Enable Network domain
+            await client.Network.enable();
+
+            const events: Array<any> = [];
+            const requests = new Map();
+
+            // Set up event listeners
+            client.Network.requestWillBeSent((params) => {
+                const request = {
+                    type: (params.type?.toLowerCase() === 'xhr' ? 'xhr' : 'fetch') as 'xhr' | 'fetch',
+                    method: params.request.method,
+                    url: params.request.url,
+                    requestHeaders: params.request.headers,
+                    timing: {
+                        requestTime: params.timestamp
+                    }
+                };
+                
+                // Apply filters if specified
+                if (options.filters) {
+                    if (options.filters.types && !options.filters.types.includes(request.type)) {
+                        return;
+                    }
+                    if (options.filters.urlPattern && !request.url.match(options.filters.urlPattern)) {
+                        return;
+                    }
+                }
+                
+                requests.set(params.requestId, request);
+            });
+
+            client.Network.responseReceived((params) => {
+                const request = requests.get(params.requestId);
+                if (request) {
+                    request.status = params.response.status;
+                    request.statusText = params.response.statusText;
+                    request.responseHeaders = params.response.headers;
+                    request.timing.responseTime = params.timestamp;
+                    events.push(request);
+                }
+            });
+
+            // Wait for specified duration
+            const duration = options.duration || 10;
+            await new Promise(resolve => setTimeout(resolve, duration * 1000));
+
+            console.error('ChromeAPI: Network event capture successful');
+            return events;
+        } catch (error) {
+            console.error('ChromeAPI: Network event capture failed:', error instanceof Error ? error.message : error);
+            throw error;
+        } finally {
+            if (client) {
+                await client.close();
+            }
+        }
+    }
+
     private get port(): number {
         const portMatch = this.baseUrl.match(/:(\d+)$/);
         return portMatch ? parseInt(portMatch[1]) : 9222;
