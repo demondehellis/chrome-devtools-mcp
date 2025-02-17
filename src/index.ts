@@ -50,7 +50,7 @@ server.tool(
 server.tool(
     'capture_screenshot',
     {
-        tabId: z.string().describe('ID of the Chrome tab to capture'),
+        tabId: z.string().describe('ID of the Chrome tab to capture. Only send this unless you are having issues with the result.'),
         format: z.enum(['jpeg', 'png']).optional()
             .describe('Initial capture format (jpeg/png). Note: Final output will be WebP with PNG fallback'),
         quality: z.number().min(1).max(100).optional()
