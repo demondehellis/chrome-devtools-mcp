@@ -401,7 +401,8 @@ export class ChromeAPI {
             return elements;
         } catch (error) {
             console.error('ChromeAPI: DOM query failed:', error instanceof Error ? error.message : error);
-            throw error;
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            throw new Error(`Failed to query DOM elements with selector "${selector}": ${errorMessage}. Note: :contains() is not a valid CSS selector. Use a valid CSS selector like tag names, classes, or IDs.`);
         } finally {
             if (client) {
                 await client.close();
