@@ -4,7 +4,11 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { ChromeAPI } from './chrome-api.js';
 import { z } from 'zod';
 
-const chromeApi = new ChromeAPI();  // Will use default port 9222
+// Get Chrome debug URL from environment variable or use default
+const chromeDebugUrl = process.env.CHROME_DEBUG_URL || 'http://localhost:9222';
+console.error(`Using Chrome debug URL: ${chromeDebugUrl}`);
+
+const chromeApi = new ChromeAPI({ baseUrl: chromeDebugUrl });
 
 // Create the MCP server
 const server = new McpServer({

@@ -4,9 +4,9 @@ import { ChromeTab } from './types.js';
 export class ChromeAPI {
     private baseUrl: string;
 
-    constructor(options: { port?: number } = {}) {
-        const { port = 9222 } = options;
-        this.baseUrl = `http://localhost:${port}`;
+    constructor(options: { port?: number; baseUrl?: string } = {}) {
+        const { port = 9222, baseUrl } = options;
+        this.baseUrl = baseUrl || `http://localhost:${port}`;
         console.error(`ChromeAPI: Connecting to ${this.baseUrl} through SSH tunnel`);
     }
 
