@@ -3,7 +3,7 @@
 An MCP server that provides tools for interacting with Chrome through its DevTools Protocol. This server enables remote control of Chrome tabs, including executing JavaScript, capturing screenshots, monitoring network traffic, and more.
 
 ## Why use an MCP server like this?
-This type of MCP Server is usful When you need to manually configure your browser to be a certain state before you let an AI tool like Cline poke at it. In my workflows I use it for testing sites that have chrome extensions enabled. 
+This type of MCP Server is useful When you need to manually configure your browser to be in a certain state before you let an AI tool like Cline poke at it. You can also use this tool to listen to and pull network events into its context. 
 
 ## Features
 
