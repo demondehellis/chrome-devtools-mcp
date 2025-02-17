@@ -3,7 +3,10 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ChromeAPI } from './chrome-api.js';
 import { z } from 'zod';
-const chromeApi = new ChromeAPI(); // Will use default port 9222
+// Get Chrome debug URL from environment variable or use default
+const chromeDebugUrl = process.env.CHROME_DEBUG_URL || 'http://localhost:9222';
+console.error(`Using Chrome debug URL: ${chromeDebugUrl}`);
+const chromeApi = new ChromeAPI({ baseUrl: chromeDebugUrl });
 // Create the MCP server
 const server = new McpServer({
     name: 'chrome-tools',
@@ -102,6 +105,34 @@ console.error('Chrome Tools MCP Server starting...');
 // Start the server
 const transport = new StdioServerTransport();
 server.connect(transport).catch(console.error);
+// Add the load_url tool
+server.tool('load_url', {
+    tabId: z.string().describe('ID of the Chrome tab to load the URL in'),
+    url: z.string().url().describe('URL to load in the tab')
+}, async (params) => {
+    try {
+        console.error(`Attempting to load URL ${params.url} in tab ${params.tabId}...`);
+        await chromeApi.loadUrl(params.tabId, params.url);
+        console.error('URL loading successful');
+        return {
+            content: [{
+                    type: 'text',
+                    text: `Successfully loaded ${params.url} in tab ${params.tabId}`
+                }]
+        };
+    }
+    catch (error) {
+        console.error('Error in load_url tool:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        return {
+            content: [{
+                    type: 'text',
+                    text: `Error: ${errorMessage}`
+                }],
+            isError: true
+        };
+    }
+});
 // Add the capture_network_events tool
 server.tool('capture_network_events', {
     tabId: z.string().describe('ID of the Chrome tab to monitor'),

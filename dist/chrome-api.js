@@ -1,8 +1,8 @@
 import CDP from 'chrome-remote-interface';
 export class ChromeAPI {
     constructor(options = {}) {
-        const { port = 9222 } = options;
-        this.baseUrl = `http://localhost:${port}`;
+        const { port = 9222, baseUrl } = options;
+        this.baseUrl = baseUrl || `http://localhost:${port}`;
         console.error(`ChromeAPI: Connecting to ${this.baseUrl} through SSH tunnel`);
     }
     /**
@@ -188,6 +188,36 @@ export class ChromeAPI {
         }
         catch (error) {
             console.error('ChromeAPI: Network event capture failed:', error instanceof Error ? error.message : error);
+            throw error;
+        }
+        finally {
+            if (client) {
+                await client.close();
+            }
+        }
+    }
+    /**
+     * Navigate a Chrome tab to a specific URL
+     * @param tabId The ID of the tab to load the URL in
+     * @param url The URL to load
+     * @returns Promise<void>
+     * @throws Error if the tab is not found or navigation fails
+     */
+    async loadUrl(tabId, url) {
+        console.error(`ChromeAPI: Attempting to load URL ${url} in tab ${tabId}`);
+        let client;
+        try {
+            // Connect to the specific tab
+            client = await CDP({ target: tabId, port: this.port });
+            // Enable Page domain for navigation
+            await client.Page.enable();
+            // Navigate to the URL and wait for load
+            await client.Page.navigate({ url });
+            await client.Page.loadEventFired();
+            console.error('ChromeAPI: URL loading successful');
+        }
+        catch (error) {
+            console.error('ChromeAPI: URL loading failed:', error instanceof Error ? error.message : error);
             throw error;
         }
         finally {

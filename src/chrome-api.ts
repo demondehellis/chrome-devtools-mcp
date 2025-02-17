@@ -243,6 +243,38 @@ export class ChromeAPI {
         }
     }
 
+    /**
+     * Navigate a Chrome tab to a specific URL
+     * @param tabId The ID of the tab to load the URL in
+     * @param url The URL to load
+     * @returns Promise<void>
+     * @throws Error if the tab is not found or navigation fails
+     */
+    async loadUrl(tabId: string, url: string): Promise<void> {
+        console.error(`ChromeAPI: Attempting to load URL ${url} in tab ${tabId}`);
+        let client;
+        try {
+            // Connect to the specific tab
+            client = await CDP({ target: tabId, port: this.port });
+            
+            // Enable Page domain for navigation
+            await client.Page.enable();
+            
+            // Navigate to the URL and wait for load
+            await client.Page.navigate({ url });
+            await client.Page.loadEventFired();
+
+            console.error('ChromeAPI: URL loading successful');
+        } catch (error) {
+            console.error('ChromeAPI: URL loading failed:', error instanceof Error ? error.message : error);
+            throw error;
+        } finally {
+            if (client) {
+                await client.close();
+            }
+        }
+    }
+
     private get port(): number {
         const portMatch = this.baseUrl.match(/:(\d+)$/);
         return portMatch ? parseInt(portMatch[1]) : 9222;

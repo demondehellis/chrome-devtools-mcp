@@ -3,6 +3,7 @@ export declare class ChromeAPI {
     private baseUrl;
     constructor(options?: {
         port?: number;
+        baseUrl?: string;
     });
     /**
      * List all available Chrome tabs
@@ -61,5 +62,13 @@ export declare class ChromeAPI {
             responseTime: number;
         };
     }>>;
+    /**
+     * Navigate a Chrome tab to a specific URL
+     * @param tabId The ID of the tab to load the URL in
+     * @param url The URL to load
+     * @returns Promise<void>
+     * @throws Error if the tab is not found or navigation fails
+     */
+    loadUrl(tabId: string, url: string): Promise<void>;
     private get port();
 }
