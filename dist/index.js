@@ -67,18 +67,12 @@ server.tool('capture_screenshot', {
             // Save the image and get the filepath
             const filepath = await saveImage(processedImage);
             console.error(`Screenshot saved to: ${filepath}`);
-            // Extract just the base64 data without the data URL prefix
-            const base64Data = processedImage.data.split(',')[1];
             return {
                 content: [{
                         type: 'text',
                         text: JSON.stringify({
-                            type: "image",
-                            source: {
-                                type: "base64",
-                                media_type: processedImage.data.startsWith('data:image/webp') ? "image/webp" : "image/png",
-                                data: base64Data
-                            }
+                            status: 'Screenshot successful.',
+                            path: filepath
                         })
                     }]
             };
