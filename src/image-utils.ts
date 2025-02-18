@@ -1,11 +1,30 @@
 import { createRequire } from 'module';
+import path from 'path';
+import fs from 'fs/promises';
 const require = createRequire(import.meta.url);
 const sharp = require('sharp');
+
+export const SCREENSHOT_DIR = path.join('/tmp', 'chrome-tools-screenshots');
 
 export interface ProcessedImage {
     data: string;
     format: 'png';
     size: number;
+}
+
+export async function saveImage(processedImage: ProcessedImage): Promise<string> {
+    // Ensure screenshots directory exists
+    await fs.mkdir(SCREENSHOT_DIR, { recursive: true });
+    
+    const filename = `screenshot_${Date.now()}.webp`;
+    const filepath = path.join(SCREENSHOT_DIR, filename);
+    
+    // Extract the base64 data after the "data:image/webp;base64," prefix
+    const base64Data = processedImage.data.split(',')[1];
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+    
+    await fs.writeFile(filepath, imageBuffer);
+    return filepath;
 }
 
 export async function processImage(base64Data: string): Promise<ProcessedImage> {

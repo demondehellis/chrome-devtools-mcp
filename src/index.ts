@@ -2,7 +2,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ChromeAPI } from './chrome-api.js';
-import { processImage } from './image-utils.js';
+import { processImage, saveImage } from './image-utils.js';
 import { z } from 'zod';
 
 // Get Chrome debug URL from environment variable or use default
@@ -75,10 +75,18 @@ server.tool(
                 // 3. If WebP fails, fall back to PNG with maximum compression
                 const processedImage = await processImage(rawBase64Data);
                 console.error(`Image optimized successfully (${processedImage.data.startsWith('data:image/webp') ? 'WebP' : 'PNG'}, ${Math.round(processedImage.size / 1024)}KB)`);
+                
+                // Save the image and get the filepath
+                const filepath = await saveImage(processedImage);
+                console.error(`Screenshot saved to: ${filepath}`);
+                
                 return {
                     content: [{
                         type: 'text',
-                        text: processedImage.data
+                        text: JSON.stringify({
+                            status: 'Screenshot successful.',
+                            path: filepath
+                        })
                     }]
                 };
             } catch (error) {

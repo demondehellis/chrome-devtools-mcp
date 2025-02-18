@@ -2,7 +2,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ChromeAPI } from './chrome-api.js';
-import { processImage } from './image-utils.js';
+import { processImage, saveImage } from './image-utils.js';
 import { z } from 'zod';
 // Get Chrome debug URL from environment variable or use default
 const chromeDebugUrl = process.env.CHROME_DEBUG_URL || 'http://localhost:9222';
@@ -41,7 +41,7 @@ async () => {
 });
 // Add the capture_screenshot tool
 server.tool('capture_screenshot', {
-    tabId: z.string().describe('ID of the Chrome tab to capture'),
+    tabId: z.string().describe('ID of the Chrome tab to capture. Only send this unless you are having issues with the result.'),
     format: z.enum(['jpeg', 'png']).optional()
         .describe('Initial capture format (jpeg/png). Note: Final output will be WebP with PNG fallback'),
     quality: z.number().min(1).max(100).optional()
@@ -64,10 +64,22 @@ server.tool('capture_screenshot', {
             // 3. If WebP fails, fall back to PNG with maximum compression
             const processedImage = await processImage(rawBase64Data);
             console.error(`Image optimized successfully (${processedImage.data.startsWith('data:image/webp') ? 'WebP' : 'PNG'}, ${Math.round(processedImage.size / 1024)}KB)`);
+            // Save the image and get the filepath
+            const filepath = await saveImage(processedImage);
+            console.error(`Screenshot saved to: ${filepath}`);
+            // Extract just the base64 data without the data URL prefix
+            const base64Data = processedImage.data.split(',')[1];
             return {
                 content: [{
                         type: 'text',
-                        text: processedImage.data
+                        text: JSON.stringify({
+                            type: "image",
+                            source: {
+                                type: "base64",
+                                media_type: processedImage.data.startsWith('data:image/webp') ? "image/webp" : "image/png",
+                                data: base64Data
+                            }
+                        })
                     }]
             };
         }
