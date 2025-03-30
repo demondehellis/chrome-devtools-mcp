@@ -15,6 +15,12 @@ export class ChromeAPI {
         console.error(`ChromeAPI: Connecting to ${this.baseUrl} (${connectionType} connection)`);
     }
 
+    private consoleLogs: Record<string, Array<{
+        type: string;
+        message: string;
+        timestamp: number;
+    }>> = {};
+
     /**
      * List all available Chrome tabs
      * @returns Promise<ChromeTab[]>
@@ -283,6 +289,23 @@ export class ChromeAPI {
                 throw new Error('Failed to connect to Chrome DevTools');
             }
 
+            // Enable Runtime domain to capture console logs
+            await client.Runtime.enable();
+
+            // Initialize or clear logs for the tab
+            this.consoleLogs[tabId] = [];
+
+            // Start listening to console logs for the tab
+            client.Runtime.consoleAPICalled(({ type, args, timestamp }) => {
+                const message = args.map(arg => arg.value || arg.description).join(' ');
+                this.consoleLogs[tabId].push({
+                    type,
+                    message,
+                    timestamp: timestamp || Date.now()
+                });
+                console.error(`Chrome Console [${type}] (Tab ${tabId}):`, message);
+            });
+
             // Enable Page domain for navigation
             await client.Page.enable();
             
@@ -524,6 +547,26 @@ export class ChromeAPI {
                 await client.close();
             }
         }
+    }
+
+    /**
+     * Retrieve captured console logs for a specific tab with optional filtering
+     * @param tabId The ID of the tab to retrieve logs for
+     * @param options Filter options (status and since timestamp)
+     * @returns Array of filtered console logs
+     */
+    getConsoleLogs(tabId: string, options: { status?: string; since?: number } = {}): Array<{
+        type: string;
+        message: string;
+        timestamp: number;
+    }> {
+        console.error(`ChromeAPI: Retrieving console logs for tab ${tabId} with filters:`, options);
+        const logs = this.consoleLogs[tabId] || [];
+        return logs.filter(log => {
+            const matchesStatus = options.status ? log.type === options.status : true;
+            const matchesSince = options.since ? log.timestamp >= options.since : true;
+            return matchesStatus && matchesSince;
+        });
     }
 
     private get port(): number {

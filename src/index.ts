@@ -293,6 +293,42 @@ server.tool(
     }
 );
 
+// Add the get_console_logs tool
+server.tool(
+    'get_console_logs',
+    {
+        tabId: z.string().describe('ID of the Chrome tab to retrieve logs for'),
+        status: z.string().optional().describe('Filter logs by status (e.g., "log", "error", "warn")'),
+        since: z.number().optional().describe('Retrieve logs since this timestamp (in milliseconds)')
+    },
+    async (params) => {
+        try {
+            console.error(`Retrieving console logs for tab ${params.tabId}...`);
+            const logs = chromeApi.getConsoleLogs(params.tabId, {
+                status: params.status,
+                since: params.since
+            });
+            console.error(`Successfully retrieved ${logs.length} logs`);
+            return {
+                content: [{
+                    type: 'text',
+                    text: JSON.stringify(logs, null, 2)
+                }]
+            };
+        } catch (error) {
+            console.error('Error in get_console_logs tool:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            return {
+                content: [{
+                    type: 'text',
+                    text: `Error: ${errorMessage}`
+                }],
+                isError: true
+            };
+        }
+    }
+);
+
 // Handle process termination
 process.on('SIGINT', () => {
     server.close().catch(console.error);
